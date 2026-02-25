@@ -24,7 +24,7 @@ class _RingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, 0);
+    final center = Offset(size.width / 2, size.height);
     final maxRadius = size.width / 2;
     final strokeWidth = maxRadius * 0.22;
     const gap = 4.0;
@@ -41,7 +41,7 @@ class _RingPainter extends CustomPainter {
 
   void _drawRing(Canvas canvas, Offset center, double radius, double stroke,
       double percent, Color color) {
-    const startAngle = 0.0;
+    const startAngle = pi;
     const sweepAngle = pi;
 
     final bgPaint = Paint()

@@ -260,12 +260,15 @@ class _GameScreenState extends State<GameScreen> {
     if (_isProcessing) return;
     _isProcessing = true;
     _gameTimer?.cancel();
+
     if (isMatchDay) {
       _finishMatch(isLeft);
       return;
     }
+
     final c = activeScenario;
     if (c == null) return;
+
     if (SettingsManager.instance.hapticsEnabled) {
       if (isLeft) {
         HapticFeedback.mediumImpact();
@@ -274,6 +277,7 @@ class _GameScreenState extends State<GameScreen> {
       }
     }
     AudioManager.instance.playSwipeSound(isLeft);
+
     int m = isLeft ? 1 : -1;
     setState(() {
       boardTrust = (boardTrust + (c.boardImpact * m / 100)).clamp(0.01, 1.0);
@@ -285,24 +289,45 @@ class _GameScreenState extends State<GameScreen> {
               .clamp(0.1, 1.0);
       cardsUntilMatch--;
       _updateMood();
-      _nextCard();
     });
-    if (mounted) {
-      _saveGame();
-    }
+
+    // Defer next card to allow user to see stat changes
+    Future.delayed(Duration(milliseconds: cardsUntilMatch <= 0 ? 1200 : 200), () {
+      if (mounted) {
+        _nextCard();
+        _saveGame();
+      }
+    });
   }
 
   void _updateMood() {
     if (isSacked) {
-      currentMood = ManagerState.sacked;
+      setState(() => currentMood = ManagerState.sacked);
       return;
     }
 
-    double avgSupport = (boardTrust + fanSupport + dressingRoom) / 3;
+    // Check if objective is currently being met
     int rank = _getUserRank();
-    int gamesRemaining = matchesTotal - matchesPlayed;
+    bool isObjectiveMet = (widget.session.id == "career") ||
+        (widget.session.id == "bottle" && rank == 1) ||
+        (widget.session.id == "top4" && rank <= 4) ||
+        (widget.session.id == "escape" && rank <= 17);
 
-    // Start with a base mood from support levels
+    // Initial mood for first game week in certain modes
+    if (matchesPlayed == 0 && (widget.session.id == "bottle" || widget.session.id == "top4")) {
+        setState(() => currentMood = ManagerState.happy);
+        return;
+    }
+    
+    // If objective is met, manager should be happy unless support is low
+    if (isObjectiveMet) {
+      if (boardTrust > 0.3 && fanSupport > 0.3 && dressingRoom > 0.3) {
+        setState(() => currentMood = ManagerState.happy);
+        return;
+      }
+    }
+
+    double avgSupport = (boardTrust + fanSupport + dressingRoom) / 3;
     ManagerState mood;
     if (avgSupport >= 0.7) {
       mood = ManagerState.happy;
@@ -321,11 +346,12 @@ class _GameScreenState extends State<GameScreen> {
       mood = ManagerState.stressed;
     }
 
-    // Factor in league position and season progression
+    // Factor in league position and season progression for high-stakes
+    int gamesRemaining = matchesTotal - matchesPlayed;
     if (gamesRemaining < 5) { // High-stakes end of season
-      if (rank == 2) {
+      if (widget.session.id == "bottle" && rank > 1) {
         mood = ManagerState.stressed;
-      } else if (rank > 4) { // Assuming a top team
+      } else if (widget.session.id == "top4" && rank > 4) {
         mood = ManagerState.angry;
       }
     }
@@ -956,23 +982,121 @@ class _GameScreenState extends State<GameScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 40),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kBlack.withAlpha((255 * 0.5).round()),
-                    side: const BorderSide(color: Colors.white, width: 2),
-                  ),
-                  onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
-                  child: const Text(
-                    "MAIN MENU",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                  ),
-                ),
+                const SizedBox(height: 20),
+                // Season stats display
+                _seasonStats(),
               ],
+            ),
+          ),
+           Positioned(
+            bottom: 20,
+            right: 20,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kBlack.withAlpha((255 * 0.5).round()),
+                side: const BorderSide(color: Colors.white, width: 2),
+              ),
+              onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
+              child: const Text(
+                "MAIN MENU",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _seasonStats() {
+    int finalRank = _getUserRank();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white24, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+           Center(
+            child: Text(
+              "SEASON REVIEW",
+              style: TextStyle(
+                color: kNeonYellow, 
+                fontSize: 18, 
+                fontWeight: FontWeight.bold
+              ),
+            ),
+          ),
+          const Divider(color: Colors.white24, height: 20),
+
+          _statRow("Final League Position", "$finalRank"),
+          const SizedBox(height: 10),
+
+          _statHeader("Final Approval Ratings"),
+          _fullLegendItem("BOARD", boardTrust, kElectricBlue),
+          _fullLegendItem("SQUAD", dressingRoom, kGold),
+          _fullLegendItem("FANS", fanSupport, kDeepRed),
+          const SizedBox(height: 15),
+
+          _statHeader("Board Verdict"),
+          Text(
+            _getVerdict(boardTrust),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontStyle: FontStyle.italic),
+          ),
+           const SizedBox(height: 15),
+
+           _statHeader("Dressing Room Atmosphere"),
+          Text(
+            _getVerdict(dressingRoom),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontStyle: FontStyle.italic),
+          ),
+          const SizedBox(height: 15),
+
+          _statHeader("Fan Reaction"),
+          Text(
+            _getVerdict(fanSupport),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontStyle: FontStyle.italic),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statRow(String title, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(title, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
+  Widget _statHeader(String title) {
+    return Text(
+      title.toUpperCase(),
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        color: kNeonYellow,
+        fontSize: 12,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 1.5,
+      ),
+    );
+  }
+
+  String _getVerdict(double rating) {
+    if (rating >= 0.8) return "Delighted with your performance. You're a club legend!";
+    if (rating >= 0.6) return "Pleased with the progress. A solid season all around.";
+    if (rating >= 0.4) return "An acceptable, if uninspiring, season. We expect more next time.";
+    if (rating >= 0.2) return "Serious concerns are being raised about your management.";
+    return "A disastrous season. The board is questioning your position.";
   }
 }
