@@ -24,6 +24,18 @@ class _MainMenuState extends State<MainMenu> {
       body: Stack(
         children: [
           Center(
+            child: Transform.scale(
+              scale: 1.15,
+              child: Image.asset(
+                "assets/images/backgrounds/stadium/Gemini_Generated_Image_wt27tdwt27tdwt27.png",
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          Container(
+            color: Colors.black.withAlpha(128),
+          ),
+          Center(
             child:
                 Column(mainAxisAlignment: MainAxisAlignment.center, children: [
               const Text("CHOOSE YOUR SAGA",

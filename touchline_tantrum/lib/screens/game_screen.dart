@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:csv/csv.dart';
@@ -22,6 +23,9 @@ import '../widgets/team_logo.dart';
 import '../widgets/slant_button.dart';
 import '../widgets/match_radar.dart';
 import '../widgets/manager_mood.dart';
+
+// Enum to represent manager's state
+enum ManagerState { neutral, happy, stressed, angry, sacked }
 
 class GameScreen extends StatefulWidget {
   final ActiveGameSession session;
@@ -1105,7 +1109,7 @@ class _GameScreenState extends State<GameScreen> {
                 _statHeader("Board Verdict"),
                 const SizedBox(height: 5),
                 Text(
-                  '"${FeedbackProvider.getFeedback("board", isWon, boardTrust, objectiveMet)}"'
+                  '"''${FeedbackProvider.getFeedback("board", isWon, boardTrust, objectiveMet)}''"'
                   ,textAlign: TextAlign.start,
                   style: const TextStyle(
                       color: Colors.white, fontStyle: FontStyle.italic, fontSize: 13),
@@ -1114,7 +1118,7 @@ class _GameScreenState extends State<GameScreen> {
                 _statHeader("Dressing Room Atmosphere"),
                 const SizedBox(height: 5),
                 Text(
-                  '"${FeedbackProvider.getFeedback("squad", isWon, dressingRoom, objectiveMet)}"'
+                  '"''${FeedbackProvider.getFeedback("squad", isWon, dressingRoom, objectiveMet)}''"'
                   ,textAlign: TextAlign.start,
                   style: const TextStyle(
                       color: Colors.white, fontStyle: FontStyle.italic, fontSize: 13),
@@ -1123,7 +1127,7 @@ class _GameScreenState extends State<GameScreen> {
                 _statHeader("Fan Reaction"),
                 const SizedBox(height: 5),
                 Text(
-                  '"${FeedbackProvider.getFeedback("fans", isWon, fanSupport, objectiveMet)}"'
+                  '"''${FeedbackProvider.getFeedback("fans", isWon, fanSupport, objectiveMet)}''"'
                   ,textAlign: TextAlign.start,
                   style: const TextStyle(
                       color: Colors.white, fontStyle: FontStyle.italic, fontSize: 13),

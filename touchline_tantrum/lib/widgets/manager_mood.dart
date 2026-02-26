@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-
-// Enum to represent manager's state, now defined in game_screen.dart
-enum ManagerState { neutral, happy, stressed, angry, sacked }
+import '../screens/game_screen.dart';
 
 class ManagerMood extends StatelessWidget {
   final ManagerState mood;
